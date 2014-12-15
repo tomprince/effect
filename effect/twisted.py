@@ -16,21 +16,32 @@ from __future__ import absolute_import
 
 from functools import partial
 
-import sys
-
 from twisted.internet.defer import Deferred, maybeDeferred, gatherResults
 from twisted.python.failure import Failure
 from twisted.internet.task import deferLater
 
-from . import dispatch_method, perform as base_perform, Delay
+from . import dispatch_method, perform as base_perform, Delay, run_box
 from effect import ParallelEffects
 
+from characteristic import attributes, Attribute
 
-def deferred_to_box(d, box):
+
+@attributes([Attribute("_box")])
+def _TwistedBox(object):
     """
     Make a Deferred pass its success or fail events on to the given box.
     """
-    d.addCallbacks(box.succeed, lambda f: box.fail((f.type, f.value, f.tb)))
+
+    def succeed(self, result):
+        if isinstance(result, Deferred):
+            result.addCallbacks(
+                self._box.succeed,
+                lambda f: self._box.fail((f.type, f.value, f.tb)))
+        else:
+            self._box.succeed(result)
+
+    def fail(self, result):
+        self._box.fail(result)
 
 
 def twisted_dispatcher(reactor, intent, box):
@@ -52,15 +63,7 @@ def twisted_dispatcher(reactor, intent, box):
     else:
         func = partial(dispatch_method, intent, dispatcher)
 
-    try:
-        result = func()
-    except:
-        box.fail(sys.exc_info())
-    else:
-        if isinstance(result, Deferred):
-            deferred_to_box(result, box)
-        else:
-            box.succeed(result)
+    run_box(_TwistedBox(box=box), func)
 
 
 def perform_parallel(parallel, reactor):

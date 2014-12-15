@@ -77,10 +77,7 @@ def default_dispatcher(intent, box):
     If you're using Twisted Deferreds, you should look at
     :func:`effect.twisted.twisted_dispatcher`.
     """
-    try:
-        box.succeed(dispatch_method(intent, default_dispatcher))
-    except:
-        box.fail(sys.exc_info())
+    run_box(box, dispatch_method, intent, default_dispatcher)
 
 
 class _Box(object):
@@ -103,6 +100,16 @@ class _Box(object):
         exc_info tuple.
         """
         self._bouncer.bounce(self._more, (True, result))
+
+
+def run_box(box, f, *args, **kwargs):
+    """
+    Call a function, putting the result in the box.
+    """
+    try:
+        box.succeed(f(*args, **kwargs))
+    except:
+        box.fail(sys.exc_info())
 
 
 def perform(effect, dispatcher=default_dispatcher):
