@@ -17,4 +17,7 @@ setuptools.setup(
         ],
     packages=['effect'],
     install_requires=['six', 'characteristic>=14.0.0'],
+    extra_requires={
+        'twisted': ['twisted>=15.1.0'],
+        },
     )
